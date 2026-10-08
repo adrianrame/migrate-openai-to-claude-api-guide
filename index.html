@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>从OpenAI无缝切换到Claude？Claude API国内调用与代码迁移教程</title>
+  <meta name="description" content="已经在用GPT代码，如何无缝切换到Claude API？本文详细讲解如何利用Claude中转站的兼容接口，将现有OpenAI项目快速迁移至Claude 5.5 Sonnet，包含Python迁移代码与参数对照。">
+  <meta name="keywords" content="Claude中转站, Claude API, Claude调用, Claude国内调用, Claude接口, Claude 5.5 API, Claude代码调用, Claude接口调用, Claude兼容OpenAI, Claude API迁移, Claude接入教程, Claude API国内">
+  <meta name="author" content="作者名称">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://quanzil.com/articles/how-to-call-gpt-api-in-china.html">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="ai api">
+  <meta property="og:title" content="从OpenAI无缝切换到Claude？Claude API国内调用与代码迁移教程">
+  <meta property="og:description" content="已经在用GPT代码，如何无缝切换到Claude API？本文详细讲解如何利用Claude中转站的兼容接口，将现有OpenAI项目快速迁移至Claude 5.5 Sonnet，包含Python迁移代码与参数对照。">
+  <meta property="og:url" content="https://quanzil.com/articles/how-to-call-gpt-api-in-china.html">
+  <meta property="og:image" content="https://quanzil.com/images/article-cover.jpg">
+  <meta property="og:locale" content="zh_CN">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="从OpenAI无缝切换到Claude？Claude API国内调用与代码迁移教程">
+  <meta name="twitter:description" content="已经在用GPT代码，如何无缝切换到Claude API？本文详细讲解如何利用Claude中转站的兼容接口，将现有OpenAI项目快速迁移至Claude 5.5 Sonnet，包含Python迁移代码与参数对照。">
+  <meta name="twitter:image" content="https://quanzil.com/images/article-cover.jpg">
+
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --surface: #fff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --accent: #2563eb;
+      --accent-light: #eff6ff;
+      --code-bg: #111827;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.8;
+    }
+    a { color: var(--accent); }
+    .site-header {
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.97);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(10px);
+    }
+    .header-inner, .page, .site-footer {
+      width: min(100% - 32px, 1100px);
+      margin: 0 auto;
+    }
+    .header-inner {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: max-content;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      box-shadow: 0 4px 10px rgba(37, 99, 235, .2);
+    }
+    .brand-copy {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .brand {
+      color: var(--text);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .brand-tagline {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .main-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: auto;
+      margin-right: 22px;
+    }
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 0 11px;
+      border-radius: 7px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      white-space: nowrap;
+      transition: color .2s ease, background .2s ease;
+    }
+    .nav-link:hover, .nav-link.active {
+      background: #f1f5f9;
+      color: var(--text);
+    }
+    .page { padding: 56px 0 72px; }
+    .article {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: clamp(24px, 5vw, 64px);
+      box-shadow: 0 8px 30px rgba(15, 23, 42, .04);
+    }
+    .article-header { margin-bottom: 40px; }
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    h1 {
+      margin: 0 0 16px;
+      color: #111827;
+      font-size: clamp(30px, 5vw, 46px);
+      line-height: 1.25;
+      letter-spacing: -.02em;
+    }
+    .summary {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-target {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 16px;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      box-shadow: 0 3px 10px rgba(37, 99, 235, .18);
+      transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+    }
+    .header-target:hover {
+      background: #1d4ed8;
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 5px 14px rgba(37, 99, 235, .25);
+    }
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .markdown-body { font-size: 17px; }
+    .markdown-body h2, .markdown-body h3, .markdown-body h4 {
+      margin: 2em 0 .7em;
+      color: #111827;
+      line-height: 1.35;
+    }
+    .markdown-body h2 {
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--line);
+      font-size: 28px;
+    }
+    .markdown-body h3 { font-size: 22px; }
+    .markdown-body p, .markdown-body ul, .markdown-body ol, .markdown-body blockquote { margin: 1em 0; }
+    .markdown-body img { max-width: 100%; height: auto; border-radius: 8px; }
+    .markdown-body blockquote {
+      margin-left: 0;
+      padding: 12px 18px;
+      border-left: 3px solid var(--accent);
+      background: var(--accent-light);
+      color: #374151;
+    }
+    .markdown-body code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #f3f4f6;
+      font-size: .9em;
+    }
+    .markdown-body pre {
+      overflow-x: auto;
+      padding: 18px;
+      border-radius: 8px;
+      background: var(--code-bg);
+      color: #e5e7eb;
+      line-height: 1.6;
+    }
+    .markdown-body pre code { padding: 0; background: transparent; color: inherit; }
+    .markdown-body table { display: block; overflow-x: auto; border-collapse: collapse; width: 100%; }
+    .markdown-body th, .markdown-body td { padding: 9px 12px; border: 1px solid var(--line); text-align: left; }
+    .markdown-body th { background: #f9fafb; }
+    .site-footer { padding: 24px 0 48px; color: var(--muted); font-size: 13px; text-align: center; }
+    @media (max-width: 640px) {
+      .header-inner { min-height: 56px; }
+      .brand-tagline, .main-nav { display: none; }
+      .page { padding: 24px 0 40px; }
+      .article { padding: 22px 18px; }
+      .markdown-body { font-size: 16px; }
+      .header-actions { gap: 10px; }
+      .header-target { padding: 8px 11px; font-size: 13px; }
+      .brand-mark { width: 31px; height: 31px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a id="site-brand" class="brand-wrap" href="https://quanzil.com/" aria-label="返回网站首页">
+        <span id="brand-mark" class="brand-mark">AI</span>
+        <span class="brand-copy">
+          <span id="brand-name" class="brand">API</span>
+          <span id="brand-tagline" class="brand-tagline">让技术更简单</span>
+        </span>
+      </a>
+      <nav class="main-nav" aria-label="主导航">
+        <a id="nav-home" class="nav-link active" href="https://quanzil.com/">首页</a>
+        <a id="nav-articles" class="nav-link" href="https://quanzil.com/pricing">模型价格</a>
+        <a id="nav-docs" class="nav-link" href="https://docs.quanzil.com/">API 文档</a>
+        <a id="nav-pricing" class="nav-link" href="https://quanzil.com/news/focus">文章资讯</a>
+      </nav>
+      <div class="header-actions">
+        <a id="header-target" class="header-target" href="https://quanzil.com/" target="_blank" rel="noopener noreferrer">进入 API 中转站 →</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <article class="article" itemscope itemtype="https://schema.org/Article">
+      <header class="article-header">
+        <p class="eyebrow">原创文章</p>
+        <h1 id="article-title" itemprop="headline">从OpenAI无缝切换到Claude？Claude API国内调用与代码迁移教程</h1>
+        <p id="article-summary" class="summary" itemprop="description">已经在用GPT代码，如何无缝切换到Claude API？本文详细讲解如何利用Claude中转站的兼容接口，将现有OpenAI项目快速迁移至Claude 5.5 Sonnet，包含Python迁移代码与参数对照。</p>
+        <div class="meta">
+          <span>作者：<span id="article-author" itemprop="author">ai agent</span></span>
+          <span>发布时间：<time id="publish-date" itemprop="datePublished" datetime="2026-09-18">2026年09月18日</time></span>
+          <span>更新时间：<time id="update-date" itemprop="dateModified"></time></span>
+        </div>
+      </header>
+
+      <!-- 👇 Python 会直接将转好的 HTML 注入到这个 div 中 -->
+      <div id="markdown-content" class="markdown-body" itemprop="articleBody">
+<p>自从 Claude 5.5 Sonnet 发布以来，它在编程、复杂逻辑推理、长文本总结等领域的表现，让大量原本使用 GPT-4 的开发者产生了强烈的“倒戈”意愿。</p>
+<p>然而，当国内开发者搜索“<strong>Claude API怎么调用</strong>”或“<strong>Claude国内调用</strong>”时，往往会面临一个头疼的现实：
+<strong>Claude 官方提供的接口格式（Messages API）与 OpenAI 的接口格式（Chat Completions API）完全不同！</strong></p>
+<p>这意味着，如果你想在原有的项目中把大模型从 GPT 换成 Claude，理论上需要重写底层的所有网络请求和参数封装逻辑。这不仅费时费力，后期同时维护两套接口代码也极其繁琐。</p>
+<p>那么，有没有一种方法，能让你<strong>不改动原有的代码架构，直接把大模型切换成 Claude 呢？</strong></p>
+<p>答案是：<strong>使用支持 OpenAI 格式兼容的 Claude 中转站。</strong></p>
+<p><strong>国内优质 Claude API 中转站推荐：</strong></p>
+<blockquote>
+<p>Claude API 中转站 平台地址：<a href="https://quanzil.com">https://quanzil.com</a></p>
+<p>Claude API 中转站 平台地址：<a href="https://quanzil.net">https://quanzil.net</a></p>
+</blockquote>
+<p>本文将为您详细揭秘，如何利用 Claude 中转站，用最少的代码改动完成从 OpenAI 到 Claude 5.5 的平滑迁移。</p>
+<hr />
+<h2>官方接口的差异：为什么迁移原本很困难？</h2>
+<p>在了解中转站的魔法之前，我们先看看官方原生接口的差异。</p>
+<p><strong>OpenAI (Chat Completions API) 的核心结构：</strong>
+- 角色系统：<code>system</code>、<code>user</code>、<code>assistant</code> 都在 <code>messages</code> 数组里。
+- 输出长度限制：不强制要求 <code>max_tokens</code>。</p>
+<p><strong>Claude 官方 (Anthropic Messages API) 的核心结构：</strong>
+- 角色系统：<code>system</code> 提示词被单独抽离出来，作为一个独立的顶层参数；<code>messages</code> 里只允许有 <code>user</code> 和 <code>assistant</code>，且必须严格交替出现。
+- 输出长度限制：<strong>强制要求</strong>必须传递 <code>max_tokens</code> 参数。
+- 请求头：需要特殊的 <code>x-api-key</code> 和 <code>anthropic-version</code>。</p>
+<p>如果你直接去对接官方，这几个差异就足够让你重写大部分请求封装逻辑。</p>
+<hr />
+<h2>Claude 中转站的魔法：协议转换与兼容</h2>
+<p>为了解决开发者的痛点，现在市面上优质的 <strong>Claude中转站</strong> 都在后端做了一层“协议转换网关”。</p>
+<p>当你按照大家最熟悉的 OpenAI 格式向中转站发送请求时：
+1. 中转站接收到你发来的 OpenAI 格式的 JSON。
+2. 中转站后台自动将 <code>system</code> 从 <code>messages</code> 数组中提取出来，转换为 Claude 需要的顶层参数。
+3. 中转站自动为你补齐或映射 <code>max_tokens</code> 等必要参数。
+4. 中转站将请求发给官方 Claude 模型。
+5. 收到官方回复后，再次将 Claude 的响应结构转换回 OpenAI 的标准响应格式，返回给你的程序。</p>
+<p>由于有了这层协议转换，<strong>国内开发者接入 Claude API 的成本降到了几乎为零</strong>。</p>
+<hr />
+<h2>代码实战：如何完成三秒钟迁移</h2>
+<p>下面我们用具体的 Python 代码来演示，迁移过程是多么简单。</p>
+<h3>迁移前的代码（调用 GPT）</h3>
+<p>假设你原来的代码是这样的：</p>
+<pre><code class="language-python">import os
+from openai import OpenAI
+
+# 原始的 OpenAI 官方配置
+client = OpenAI(
+    api_key=&quot;sk-openai-xxxxxx&quot;, 
+    base_url=&quot;https://api.openai.com/v1&quot; 
+)
+
+response = client.chat.completions.create(
+    model=&quot;gpt-4o&quot;,
+    messages=[
+        {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: &quot;你是一个严谨的代码审查员。&quot;},
+        {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;请检查这段代码是否有安全漏洞...&quot;}
+    ],
+    temperature=0.7
+)
+
+print(response.choices[0].message.content)
+</code></pre>
+<h3>迁移后的代码（通过中转站调用 Claude 5.5）</h3>
+<p>你只需要修改初始化客户端时的<strong>三个变量</strong>（API Key、Base URL、Model），其余的业务逻辑、消息组装、流式输出、JSON 解析代码，<strong>一行都不用改！</strong></p>
+<pre><code class="language-python">import os
+from openai import OpenAI
+
+# 1. 替换为 Claude 中转站的配置
+client = OpenAI(
+    api_key=&quot;sk-你的Claude中转站API_KEY&quot;, 
+    base_url=&quot;https://你的中转站域名/v1&quot;  # 重点：保留 /v1
+)
+
+# 发起请求
+response = client.chat.completions.create(
+    model=&quot;claude-3-5-sonnet&quot;, # 2. 将模型名称替换为 Claude 5.5
+    messages=[
+        {&quot;role&quot;: &quot;system&quot;, &quot;content&quot;: &quot;你是一个严谨的代码审查员。&quot;},
+        {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;请检查这段代码是否有安全漏洞...&quot;}
+    ],
+    max_tokens=4096, # 3. 建议加上最大输出 token 限制，防止意外截断
+    temperature=0.7
+)
+
+print(response.choices[0].message.content)
+</code></pre>
+<p>这就是 <strong>Claude接口</strong> 兼容方案的魅力！</p>
+<hr />
+<h2>迁移过程中需要注意的 3 个“坑”</h2>
+<p>虽然中转站帮你搞定了 99% 的兼容工作，但在从 GPT 迁移到 Claude 时，由于底层模型特性的不同，依然有几个细节需要注意：</p>
+<h3>1. 务必设置 <code>max_tokens</code></h3>
+<p>在 OpenAI 中，如果不设置 <code>max_tokens</code>，模型会一直输出直到遇到自然的停止标志。但在 Claude 中，官方引擎强制要求设置。虽然部分中转站会帮你设置默认值，但为了保证你的长代码不被截断，<strong>强烈建议在所有调用 Claude 的请求中显式声明 <code>max_tokens</code></strong>（Claude 5.5 Sonnet 最高支持 8192）。</p>
+<h3>2. 避免不规范的多轮对话</h3>
+<p>GPT 对 <code>messages</code> 的容错率比较高，你可以连续发两条 <code>role: "user"</code>。
+但 Claude 的模型训练极其严格，它要求对话必须是 <code>user</code> -&gt; <code>assistant</code> -&gt; <code>user</code> 这样严格交替的。如果在迁移后遇到了 <code>400 Bad Request</code>，请检查一下你的代码是否将两条同角色的消息连在一起发送了。</p>
+<h3>3. System 提示词的位置</h3>
+<p>如果你原来把系统提示词（<code>role: "system"</code>）放在了 <code>messages</code> 数组的中间甚至最后，GPT 可能还能理解，但这在 Claude 中容易报错。请确保 <code>system</code> 消息永远放在 <code>messages</code> 数组的<strong>最开头，且只能有一条</strong>。</p>
+<hr />
+<h2>进阶框架迁移：LangChain 与 LlamaIndex</h2>
+<p>如果你在项目里使用了高级 AI 框架（如 LangChain），迁移逻辑是一样的：<strong>继续使用 OpenAI 的封装类，不要使用 Anthropic 的封装类。</strong></p>
+<p><strong>LangChain 迁移示例：</strong></p>
+<pre><code class="language-python"># 迁移前
+from langchain_openai import ChatOpenAI
+
+chat = ChatOpenAI(
+    model=&quot;gpt-4o&quot;,
+    openai_api_key=&quot;sk-openai-xxx&quot;
+)
+
+# 迁移后：依旧使用 ChatOpenAI，但传入 Claude 的参数
+chat_claude = ChatOpenAI(
+    model=&quot;claude-3-5-sonnet&quot;,
+    openai_api_key=&quot;sk-你的Claude中转API_KEY&quot;,
+    openai_api_base=&quot;https://你的中转站域名/v1&quot;, # 修改 Base URL
+    max_tokens=4096
+)
+</code></pre>
+<p>这种做法不仅极其方便，还为你以后搭建“多模型路由系统”（比如判断是复杂问题就路由给 Claude 5.5，简单问题路由给廉价模型）铺平了道路，因为所有的模型调用方式都在同一个基类之下统一了。</p>
+<hr />
+<h2>总结</h2>
+<p>总结来说，当大家在研究“<strong>Claude API国内</strong>如何接入”时，最优解并非费尽周折去解决原生官方接口的网络和支付问题。</p>
+<p>通过靠谱的 <strong>Claude 中转站</strong>，我们不仅能彻底解决合规、网络和账单的麻烦，还能直接享受“OpenAI 接口兼容”的巨大红利。这让你现有的庞大代码库、基于 ChatGPT 开发的各类插件和开源系统，只需一分钟的配置修改，就能无缝切换到 Claude 的强大引擎之上。</p>
+<p>想要立即体验无缝迁移？获取你的 Claude API 凭证，请访问以下平台：</p>
+<blockquote>
+<p><a href="https://quanzil.com">https://quanzil.com</a></p>
+<p><a href="https://quanzil.net">https://quanzil.net</a></p>
+</blockquote>
+</div>
+
+      <!-- 👇 Python 会识别并删除这个占位符，保持输出页面干净 -->
+      
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div>© <span id="current-year"></span> 保留所有权利</div>
+  </footer>
+
+  <script>
+    // Python 会替换这里的内容
+    const articleConfig = {
+  "title": "从OpenAI无缝切换到Claude？Claude API国内调用与代码迁移教程",
+  "summary": "已经在用GPT代码，如何无缝切换到Claude API？本文详细讲解如何利用Claude中转站的兼容接口，将现有OpenAI项目快速迁移至Claude 5.5 Sonnet，包含Python迁移代码与参数对照。",
+  "author": "ai agent",
+  "published": "2026-10-08 00:00:00",
+  "canonical": "https://quanzil.com/articles/how-to-call-gpt-api-in-china.html",
+  "targetUrl": "https://quanzil.com/",
+  "targetLabel": "进入 API 中转站 →",
+  "siteName": "API ",
+  "siteTagline": "让技术更简单",
+  "brandMark": "AI",
+  "homeUrl": "https://quanzil.com/",
+  "articlesUrl": "https://quanzil.com/pricing",
+  "docsUrl": "https://docs.quanzil.com/",
+  "pricingUrl": "https://quanzil.com/news/focus"
+};
+
+    const formatDate = value => new Intl.DateTimeFormat('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date(value));
+
+    // 填充顶部和导航信息
+    document.title = `${articleConfig.title}｜网站名称`;
+    document.getElementById('site-brand').href = articleConfig.homeUrl;
+    document.getElementById('brand-name').textContent = articleConfig.siteName;
+    document.getElementById('brand-tagline').textContent = articleConfig.siteTagline;
+    document.getElementById('brand-mark').textContent = articleConfig.brandMark;
+    document.getElementById('nav-home').href = articleConfig.homeUrl;
+    document.getElementById('nav-articles').href = articleConfig.articlesUrl;
+    document.getElementById('nav-docs').href = articleConfig.docsUrl;
+    document.getElementById('nav-pricing').href = articleConfig.pricingUrl;
+
+    // 填充文章 Meta 数据
+    document.getElementById('article-title').textContent = articleConfig.title;
+    document.getElementById('article-summary').textContent = articleConfig.summary;
+    document.getElementById('article-author').textContent = articleConfig.author;
+    const headerTarget = document.getElementById('header-target');
+    headerTarget.href = articleConfig.targetUrl;
+    headerTarget.textContent = articleConfig.targetLabel;
+
+    document.getElementById('publish-date').textContent = formatDate(articleConfig.published);
+    document.getElementById('publish-date').dateTime = articleConfig.published;
+
+    const updated = new Date();
+    const updateDate = updated.toISOString().slice(0, 10);
+    document.getElementById('update-date').textContent = formatDate(updateDate);
+    document.getElementById('update-date').dateTime = updateDate;
+    document.getElementById('current-year').textContent = updated.getFullYear();
+
+    // 构建结构化数据 (对百度/Google SEO 极其重要)
+    const schema = {
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: articleConfig.title,
+      description: articleConfig.summary,
+      author: { '@type': 'Person', name: articleConfig.author },
+      datePublished: articleConfig.published,
+      dateModified: updateDate,
+      mainEntityOfPage: { '@type': 'WebPage', '@id': articleConfig.canonical }
+    };
+    const schemaScript = document.createElement('script');
+    schemaScript.type = 'application/ld+json';
+    schemaScript.textContent = JSON.stringify(schema);
+    document.head.appendChild(schemaScript);
+  </script>
+</body>
+</html>
